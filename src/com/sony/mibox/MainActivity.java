@@ -7,14 +7,16 @@ import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
-import android.util.Base64;
 import android.util.Log;
-import android.widget.ImageView;
+import fi.iki.elonen.NanoHTTPD;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
-import java.nio.ByteBuffer;
+import java.io.IOException;
 import java.util.List;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements HttpServer.OnRequestListener {
     public static String TAG = "MainActivity";
 
     @Override
@@ -22,32 +24,68 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
 
-        // Get all installed applications.
+        mHttpServer = new HttpServer(8080);
+        mHttpServer.setOnRequestListener(this);
+        try {
+            mHttpServer.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (mHttpServer != null) {
+            mHttpServer.stop();
+        }
+    }
+
+    @Override
+    public NanoHTTPD.Response onRequest(String action) {
+        if (action.equals("applist")) {
+            return getAppList();
+        }
+        return null;
+    }
+
+    // Get all installed applications.
+    private NanoHTTPD.Response getAppList() {
         Intent intent = new Intent(Intent.ACTION_MAIN);
         intent.addCategory(Intent.CATEGORY_LAUNCHER);
         PackageManager pm = getPackageManager();
         List<ResolveInfo> appList = pm.queryIntentActivities(intent, 0);
 
-        Bitmap bitmap =((BitmapDrawable)appList.get(0).loadIcon(pm)).getBitmap();
+        JSONArray appArray = new JSONArray();
+        for (ResolveInfo info : appList) {
+            JSONObject app = new JSONObject();
+            try {
+                app.put("name", info.loadLabel(pm).toString());
+                app.put("package", info.activityInfo.packageName);
+                app.put("class", info.activityInfo.name);
 
-        String imageString = image2String(bitmap);
-        Bitmap imageBitmap = string2Image(imageString, bitmap.getWidth(), bitmap.getHeight());
+                JSONObject icon = new JSONObject();
+                Bitmap bitmap =  ((BitmapDrawable)info.loadIcon(pm)).getBitmap();
+                icon.put("content", Utils.image2String(bitmap));
+                icon.put("width", bitmap.getWidth());
+                icon.put("height", bitmap.getHeight());
+                app.put("icon", icon);
 
-        ImageView imageView = (ImageView)findViewById(R.id.imageView);
-        imageView.setImageBitmap(imageBitmap);
+                appArray.put(app);
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+
+        JSONObject applications = new JSONObject();
+        try {
+            applications.put("applications", appArray);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        return new NanoHTTPD.Response(applications.toString());
     }
 
-    public String image2String(Bitmap bitmap) {
-        ByteBuffer buffer = ByteBuffer.allocate(bitmap.getByteCount());
-        bitmap.copyPixelsToBuffer(buffer);
-        return Base64.encodeToString(buffer.array(), Base64.DEFAULT);
-    }
-
-    public Bitmap string2Image(String imageStringData, int width, int height) {
-        byte[] bytes = Base64.decode(imageStringData, Base64.DEFAULT);
-        ByteBuffer buffer = ByteBuffer.wrap(bytes);
-        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-        bitmap.copyPixelsFromBuffer(buffer);
-        return bitmap;
-    }
+    private HttpServer mHttpServer;
 }
