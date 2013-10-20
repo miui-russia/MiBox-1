@@ -26,8 +26,10 @@ public class MainActivity extends Activity implements HttpServer.OnRequestListen
 
         mHttpServer = new HttpServer(8080);
         mHttpServer.setOnRequestListener(this);
+        mSSDPServer = new SSDPServer(this);
         try {
             mHttpServer.start();
+            mSSDPServer.start();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -38,6 +40,11 @@ public class MainActivity extends Activity implements HttpServer.OnRequestListen
         super.onDestroy();
         if (mHttpServer != null) {
             mHttpServer.stop();
+            mHttpServer = null;
+        }
+
+        if (mSSDPServer != null) {
+            mSSDPServer.stop();
         }
     }
 
@@ -88,4 +95,5 @@ public class MainActivity extends Activity implements HttpServer.OnRequestListen
     }
 
     private HttpServer mHttpServer;
+    private SSDPServer mSSDPServer;
 }
