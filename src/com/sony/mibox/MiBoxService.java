@@ -1,28 +1,34 @@
 package com.sony.mibox;
 
-import android.app.Activity;
+import android.app.Service;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
-import android.os.Bundle;
-import android.util.Log;
+import android.os.IBinder;
+import android.view.InputEvent;
+import android.view.KeyEvent;
 import fi.iki.elonen.NanoHTTPD;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.List;
 
-public class MainActivity extends Activity implements HttpServer.OnRequestListener {
-    public static String TAG = "MainActivity";
+public class MiBoxService extends Service implements HttpServer.OnRequestListener {
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.main);
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
 
         mHttpServer = new HttpServer(8080);
         mHttpServer.setOnRequestListener(this);
@@ -36,7 +42,9 @@ public class MainActivity extends Activity implements HttpServer.OnRequestListen
     }
 
     @Override
-    protected void onDestroy() {
+    public void onDestroy() {
+        super.onDestroy();
+
         super.onDestroy();
         if (mHttpServer != null) {
             mHttpServer.stop();
@@ -91,7 +99,28 @@ public class MainActivity extends Activity implements HttpServer.OnRequestListen
             e.printStackTrace();
         }
 
-        return new NanoHTTPD.Response(applications.toString());
+        return new NanoHTTPD.Response(NanoHTTPD.Response.Status.OK, "application/json", applications.toString());
+    }
+
+    private void injectKeyEvent(int keycode) {
+        try {
+            Class inputManagerClass = Class.forName("android.hardware.input.InputManager");
+            Method getInstance = inputManagerClass.getMethod("getInstance");
+            Object obj = getInstance.invoke(null, (Object[])null);
+            Method injectInputEvent = inputManagerClass.getMethod("injectInputEvent", InputEvent.class, Integer.TYPE);
+            KeyEvent event1 = new KeyEvent(KeyEvent.ACTION_DOWN, keycode);
+            KeyEvent event2 = new KeyEvent(KeyEvent.ACTION_UP, keycode);
+            injectInputEvent.invoke(obj, event1, Integer.valueOf(2));
+            injectInputEvent.invoke(obj, event2, Integer.valueOf(2));
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
     }
 
     private HttpServer mHttpServer;

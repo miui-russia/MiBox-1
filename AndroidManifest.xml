@@ -9,15 +9,15 @@
     <application
         android:label="@string/app_name"
         android:icon="@drawable/ic_launcher">
-        <activity
-            android:name="MainActivity"
-            android:label="@string/app_name">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
 
+        <receiver android:name=".BootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="com.sony.mibox.startservice" />
+            </intent-filter>
+        </receiver>
+
+        <service android:name=".MiBoxService" />
         <service android:name="org.teleal.cling.android.AndroidUpnpServiceImpl" />
     </application>
 
@@ -25,4 +25,5 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 </manifest>
