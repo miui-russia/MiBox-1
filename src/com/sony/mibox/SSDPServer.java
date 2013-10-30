@@ -31,10 +31,10 @@ public class SSDPServer {
     }
 
     private LocalDevice createDevice() throws ValidationException {
-        DeviceType type = new UDADeviceType("MiController", 1);
-        DeviceDetails details = new DeviceDetails("Mi Controller",
+        DeviceType type = new UDADeviceType("MiBoxService", 1);
+        DeviceDetails details = new DeviceDetails("MiBox Service",
                 new ManufacturerDetails("SONY"),
-                new ModelDetails("Mi Controller", "A demo to controller MiBox"));
+                new ModelDetails("MiBox Service", "A service to let remote client to control MiBox"));
 
         return new LocalDevice(new DeviceIdentity(udn), type, details, (LocalService)null);
     }

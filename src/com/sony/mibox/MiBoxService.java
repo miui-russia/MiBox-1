@@ -1,12 +1,15 @@
 package com.sony.mibox;
 
 import android.app.Service;
+import android.content.ActivityNotFoundException;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.IBinder;
+import android.util.Log;
 import android.view.InputEvent;
 import android.view.KeyEvent;
 import fi.iki.elonen.NanoHTTPD;
@@ -18,8 +21,10 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Map;
 
 public class MiBoxService extends Service implements HttpServer.OnRequestListener {
+    public static final String TAG = "MiBoxService";
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -57,9 +62,13 @@ public class MiBoxService extends Service implements HttpServer.OnRequestListene
     }
 
     @Override
-    public NanoHTTPD.Response onRequest(String action) {
+    public NanoHTTPD.Response onRequest(String action, Map<String, String> params) {
+        Log.d(TAG, "action = " + action);
+
         if (action.equals("applist")) {
             return getAppList();
+        } else if(action.equals("run")) {
+            return runApplication(params.get("package"), params.get("class"));
         }
         return null;
     }
@@ -100,6 +109,20 @@ public class MiBoxService extends Service implements HttpServer.OnRequestListene
         }
 
         return new NanoHTTPD.Response(NanoHTTPD.Response.Status.OK, "application/json", applications.toString());
+    }
+
+    private NanoHTTPD.Response runApplication(String packageName, String className) {
+        Intent intent = new Intent();
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.setComponent(new ComponentName(packageName, className));
+
+        try {
+            startActivity(intent);
+        } catch (ActivityNotFoundException e) {
+            return new NanoHTTPD.Response(e.toString());
+        }
+
+        return new NanoHTTPD.Response("OK");
     }
 
     private void injectKeyEvent(int keycode) {
