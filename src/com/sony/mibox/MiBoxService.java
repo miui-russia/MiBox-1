@@ -10,16 +10,13 @@ import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.IBinder;
 import android.util.Log;
-import android.view.InputEvent;
-import android.view.KeyEvent;
+import com.chrisplus.rootmanager.RootManager;
 import fi.iki.elonen.NanoHTTPD;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
@@ -44,13 +41,18 @@ public class MiBoxService extends Service implements HttpServer.OnRequestListene
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        mRootManager = RootManager.getInstance();
+        if (mRootManager.hasRooted() && mRootManager.grantPermission()) {
+            mRootManager.runCommand("chmod 777 /dev/uinput");
+            init();
+        }
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
 
-        super.onDestroy();
         if (mHttpServer != null) {
             mHttpServer.stop();
             mHttpServer = null;
@@ -58,6 +60,10 @@ public class MiBoxService extends Service implements HttpServer.OnRequestListene
 
         if (mSSDPServer != null) {
             mSSDPServer.stop();
+        }
+
+        if (mRootManager.hasRooted()) {
+            destroy();
         }
     }
 
@@ -69,6 +75,10 @@ public class MiBoxService extends Service implements HttpServer.OnRequestListene
             return getAppList();
         } else if(action.equals("run")) {
             return runApplication(params.get("package"), params.get("class"));
+        } else if(action.equals("injectkey")) {
+            int keyCode = Integer.valueOf(params.get("keycode"));
+            injectKey(keyCode);
+            return new NanoHTTPD.Response("OK");
         }
         return null;
     }
@@ -125,27 +135,15 @@ public class MiBoxService extends Service implements HttpServer.OnRequestListene
         return new NanoHTTPD.Response("OK");
     }
 
-    private void injectKeyEvent(int keycode) {
-        try {
-            Class inputManagerClass = Class.forName("android.hardware.input.InputManager");
-            Method getInstance = inputManagerClass.getMethod("getInstance");
-            Object obj = getInstance.invoke(null, (Object[])null);
-            Method injectInputEvent = inputManagerClass.getMethod("injectInputEvent", InputEvent.class, Integer.TYPE);
-            KeyEvent event1 = new KeyEvent(KeyEvent.ACTION_DOWN, keycode);
-            KeyEvent event2 = new KeyEvent(KeyEvent.ACTION_UP, keycode);
-            injectInputEvent.invoke(obj, event1, Integer.valueOf(2));
-            injectInputEvent.invoke(obj, event2, Integer.valueOf(2));
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace();
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        }
-    }
+    private native int init();
+    private native void destroy();
+    private native int injectKey(int keyCode);
 
     private HttpServer mHttpServer;
     private SSDPServer mSSDPServer;
+    private RootManager mRootManager;
+
+    static {
+        System.loadLibrary("uinput");
+    }
 }
