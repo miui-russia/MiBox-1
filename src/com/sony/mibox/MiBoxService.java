@@ -48,8 +48,6 @@ public class MiBoxService extends Service implements HttpServer.OnRequestListene
             mRootManager.runCommand("chmod 777 /dev/uinput");
             init();
         }
-
-        getRunningProcess();
     }
 
     @Override
@@ -138,13 +136,17 @@ public class MiBoxService extends Service implements HttpServer.OnRequestListene
         return new NanoHTTPD.Response("OK");
     }
 
-    private void getRunningProcess() {
+    private boolean isApplicationRunning(String processName) {
         ActivityManager am = (ActivityManager)getSystemService(ACTIVITY_SERVICE);
         List<ActivityManager.RunningAppProcessInfo> runningProcessList = am.getRunningAppProcesses();
 
         for (ActivityManager.RunningAppProcessInfo processInfo : runningProcessList) {
-            Log.d(TAG, processInfo.processName);
+            if (processInfo.processName.equals(processName)) {
+                return true;
+            }
         }
+
+        return false;
     }
 
     private native int init();
