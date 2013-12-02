@@ -1,5 +1,6 @@
 package com.sony.mibox;
 
+import android.app.ActivityManager;
 import android.app.Service;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
@@ -47,6 +48,8 @@ public class MiBoxService extends Service implements HttpServer.OnRequestListene
             mRootManager.runCommand("chmod 777 /dev/uinput");
             init();
         }
+
+        getRunningProcess();
     }
 
     @Override
@@ -133,6 +136,15 @@ public class MiBoxService extends Service implements HttpServer.OnRequestListene
         }
 
         return new NanoHTTPD.Response("OK");
+    }
+
+    private void getRunningProcess() {
+        ActivityManager am = (ActivityManager)getSystemService(ACTIVITY_SERVICE);
+        List<ActivityManager.RunningAppProcessInfo> runningProcessList = am.getRunningAppProcesses();
+
+        for (ActivityManager.RunningAppProcessInfo processInfo : runningProcessList) {
+            Log.d(TAG, processInfo.processName);
+        }
     }
 
     private native int init();
