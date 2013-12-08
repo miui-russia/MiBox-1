@@ -72,28 +72,37 @@ public class MiBoxService extends Service implements HttpServer.OnRequestListene
     public NanoHTTPD.Response onRequest(String action, Map<String, String> params) {
         Log.d(TAG, "action = " + action);
 
-        if (action.equals("applist")) {
-            return getAppList();
+        if(action.equals("appnumber")) {
+            return getAppNumber();
+        } else if (action.equals("appinfo")) {
+            return getAppInfo(Integer.valueOf(params.get("index")));
         } else if(action.equals("run")) {
             return runApplication(params.get("package"), params.get("class"));
         } else if(action.equals("injectkey")) {
             int keyCode = Integer.valueOf(params.get("keycode"));
             injectKey(keyCode);
             return new NanoHTTPD.Response("OK");
+        } else if (action.equals("checkrunningstatus")) {
+            return isApplicationRunning(params.get("package"));
         }
         return null;
     }
 
-    // Get all installed applications.
-    private NanoHTTPD.Response getAppList() {
+    private NanoHTTPD.Response getAppNumber() {
         Intent intent = new Intent(Intent.ACTION_MAIN);
         intent.addCategory(Intent.CATEGORY_LAUNCHER);
         PackageManager pm = getPackageManager();
-        List<ResolveInfo> appList = pm.queryIntentActivities(intent, 0);
+        mAppList = pm.queryIntentActivities(intent, 0);
+        return new NanoHTTPD.Response(NanoHTTPD.Response.Status.OK, "text/plain", String.valueOf(mAppList.size()));
+    }
 
-        JSONArray appArray = new JSONArray();
-        for (ResolveInfo info : appList) {
-            JSONObject app = new JSONObject();
+    private NanoHTTPD.Response getAppInfo(int index) {
+        JSONObject app = new JSONObject();
+
+        if (mAppList != null && index >= 0 && index < mAppList.size()) {
+            PackageManager pm = getPackageManager();
+            ResolveInfo info = mAppList.get(index);
+
             try {
                 app.put("name", info.loadLabel(pm).toString());
                 app.put("package", info.activityInfo.packageName);
@@ -105,21 +114,11 @@ public class MiBoxService extends Service implements HttpServer.OnRequestListene
                 icon.put("width", bitmap.getWidth());
                 icon.put("height", bitmap.getHeight());
                 app.put("icon", icon);
-
-                appArray.put(app);
             } catch (JSONException e) {
                 e.printStackTrace();
             }
         }
-
-        JSONObject applications = new JSONObject();
-        try {
-            applications.put("applications", appArray);
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-
-        return new NanoHTTPD.Response(NanoHTTPD.Response.Status.OK, "application/json", applications.toString());
+        return new NanoHTTPD.Response(NanoHTTPD.Response.Status.OK, "application/json", app.toString());
     }
 
     private NanoHTTPD.Response runApplication(String packageName, String className) {
@@ -136,17 +135,17 @@ public class MiBoxService extends Service implements HttpServer.OnRequestListene
         return new NanoHTTPD.Response("OK");
     }
 
-    private boolean isApplicationRunning(String processName) {
+    private NanoHTTPD.Response isApplicationRunning(String packageName) {
         ActivityManager am = (ActivityManager)getSystemService(ACTIVITY_SERVICE);
-        List<ActivityManager.RunningAppProcessInfo> runningProcessList = am.getRunningAppProcesses();
+        List<ActivityManager.RunningTaskInfo> runningTaskList = am.getRunningTasks(1);
 
-        for (ActivityManager.RunningAppProcessInfo processInfo : runningProcessList) {
-            if (processInfo.processName.equals(processName)) {
-                return true;
-            }
+        String taskPackageName = runningTaskList.get(0).topActivity.getPackageName();
+        Log.d(TAG, packageName + " : " + taskPackageName);
+
+        if (taskPackageName.equals(packageName)) {
+            return new NanoHTTPD.Response(NanoHTTPD.Response.Status.OK, "text/plain", "running");
         }
-
-        return false;
+        return new NanoHTTPD.Response(NanoHTTPD.Response.Status.OK, "text/plain", "exited");
     }
 
     private native int init();
@@ -156,6 +155,8 @@ public class MiBoxService extends Service implements HttpServer.OnRequestListene
     private HttpServer mHttpServer;
     private SSDPServer mSSDPServer;
     private RootManager mRootManager;
+
+    private List<ResolveInfo> mAppList;
 
     static {
         System.loadLibrary("uinput");
