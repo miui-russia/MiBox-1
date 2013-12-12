@@ -1,6 +1,8 @@
 package com.sony.mibox;
 
 import android.app.ActivityManager;
+import android.app.Notification;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
@@ -32,6 +34,12 @@ public class MiBoxService extends Service implements HttpServer.OnRequestListene
     @Override
     public void onCreate() {
         super.onCreate();
+
+        Intent intent = new Intent(this, MyActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, 0);
+        Notification.Builder notificationBuilder = new Notification.Builder(this);
+        notificationBuilder.setSmallIcon(R.drawable.ic_launcher).setContentTitle("MiBox Service").setContentText("Running").setContentIntent(pendingIntent);
+        startForeground(1, notificationBuilder.build());
 
         mHttpServer = new HttpServer(8080);
         mHttpServer.setOnRequestListener(this);
