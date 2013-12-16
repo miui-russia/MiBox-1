@@ -1,7 +1,6 @@
 package com.sony.mibox;
 
 import android.app.ActivityManager;
-import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.ActivityNotFoundException;
@@ -12,10 +11,10 @@ import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.IBinder;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import com.chrisplus.rootmanager.RootManager;
 import fi.iki.elonen.NanoHTTPD;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -37,7 +36,7 @@ public class MiBoxService extends Service implements HttpServer.OnRequestListene
 
         Intent intent = new Intent(this, MyActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, 0);
-        Notification.Builder notificationBuilder = new Notification.Builder(this);
+        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this);
         notificationBuilder.setSmallIcon(R.drawable.ic_launcher).setContentTitle("MiBox Service").setContentText("Running").setContentIntent(pendingIntent);
         startForeground(1, notificationBuilder.build());
 
